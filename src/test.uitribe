@@ -1,0 +1,17 @@
+
+
+
+state E1: 
+    button2.click ==> E2
+    button3.click ==> S1 
+
+state E2:
+    button1.click ==> E1     
+    button3.click ==> E3     
+
+state E3:
+    button1.click ==> E1
+    button2.click ==> E2 
+
+process S1:
+    process1.done ==> E1

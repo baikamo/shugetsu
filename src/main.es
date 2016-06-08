@@ -1,9 +1,18 @@
 'use strict';
 
+let fs = require('fs');
+/*
+let rl = require('readline').createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+*/
+
 const Tokens = {
   WHITE : /^\s+/,
   COMMENT : /^#.*$/,
   STATE : /^state/,
+  PROCESS : /^process/,
   PREVIOUS : /^'/,
   IDENT : /^[A-Za-z_][A-Za-z0-9_]+/,
   NUMBER : /^(-)?\d+(\.\d+)?/,
@@ -22,13 +31,18 @@ const Tokens = {
 };
 
 
-let main = code => {
+
+let main = () => {
+  let code = fs.readFileSync('test.uitribe', 'utf-8');
   let tokens = tokenize(code);
   let elems = (new Parser(tokens)).exec();
+  console.log(elems);
   let exec = new Executor(elems);
   exec.verify();
-  console.log(elems);
+  //rl.on('line', s => {console.log('hello')});
+
 };
+
 
 
 /*TOKENIZER--------------------------------------------------------------------*/
@@ -37,6 +51,7 @@ let tokenize = code => {
   const t = match(code);
   return [t].concat(tokenize(code.substr(t.value.length)));
 };
+
 
 let match = code => {
   for (let key in Tokens) {
@@ -48,6 +63,7 @@ let match = code => {
 };
 
 
+
 /*PARSER--------------------------------------------------------------------*/
 
 let Parser = class {
@@ -57,7 +73,8 @@ let Parser = class {
   };
 
   exec() {
-    this.es = {};
+    this.es = {}; // {state : [{obj, event, target}*]}
+    // this.objs = {};
     this.skipBlank();
     while (this.tokens.length > 0) {
       this.toplevel();
@@ -70,6 +87,9 @@ let Parser = class {
       let name = this.next().scan('IDENT');
       if (name.value in this.es) throw `State ${name.value} has been already declared\n\n${this.error()}`
       this.es[name.value] = this.verify('COLON').states();
+    } else if(this.seek('PROCESS')) {
+      let name = this.next.scan('IDENT');
+      
     }
     else throw `Unexcepted token ${this.tokens[0].type}(${this.tokens[0].value}) \n\n ${this.error()}`;
   };
@@ -129,16 +149,19 @@ let Executor = class {
   constructor(trans) {
     this.trans = trans;
   };
+  
 
   verify() {
+    let msg = [];
     // Check all targets are declared
     let states = Object.keys(this.trans);
-    let msg = [];
     states.map(s => {
       this.trans[s].map(x => x.target)
                    .filter(x => !(x in this.trans))
                    .forEach(x => msg.push(`${x} is not declared!`));
     });
+
+    // Output messages
     msg.forEach(x => this.log(x));
     if(msg.length !== 0) throw `incorrext transitions`;
   };
@@ -149,22 +172,5 @@ let Executor = class {
 
 };
 
-
-/*EXEC*/
-const code = String.raw`
-state E1: 
-    button2.click ==> E2
-    button3.click ==> E3
-
-state E2:
-    button1.click ==> E1     
-    button3.click ==> E3     
-
-state E3:
-    button1.click ==> E1
-    button2.click ==> E2 
-`;
-
-
-main(code);
+main();
 
